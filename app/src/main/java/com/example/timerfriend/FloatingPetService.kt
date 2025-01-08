@@ -1,5 +1,8 @@
 package com.example.timerfriend
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
+import android.animation.ValueAnimator
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -9,11 +12,14 @@ import android.os.IBinder
 import android.os.Looper
 import android.view.*
 import android.view.WindowManager.LayoutParams
+import android.view.animation.AccelerateInterpolator
 import android.widget.TextView
+import kotlin.math.hypot
 
 class FloatingPetService : Service() {
     private lateinit var windowManager: WindowManager
     private lateinit var floatingView: View
+    private lateinit var dismissTarget: View
     private lateinit var timerClockView: TimerClockView
     private lateinit var timerTextView: TextView
     private var timerHandler = Handler(Looper.getMainLooper())
@@ -21,7 +27,12 @@ class FloatingPetService : Service() {
     private var remainingTimeMillis: Long = 0
     private var initialX: Int = 0
     private var initialY: Int = 0
+    private var isDragging = false
+    private var dismissTargetShowing = false
+    private var isViewAdded = false
     private lateinit var floatingViewParams: WindowManager.LayoutParams
+    private lateinit var dismissTargetParams: WindowManager.LayoutParams
+    private var startDragY = 0f
 
     override fun onBind(intent: Intent): IBinder? {
         return null
@@ -36,7 +47,11 @@ class FloatingPetService : Service() {
         timerClockView = floatingView.findViewById(R.id.pet_image)
         timerTextView = floatingView.findViewById(R.id.timer_text)
 
-        // Set up the WindowManager LayoutParams
+        // Initialize dismiss target
+        dismissTarget = LayoutInflater.from(this).inflate(R.layout.layout_dismiss_target, null)
+        dismissTarget.alpha = 0f
+
+        // Set up the WindowManager LayoutParams for floating view
         floatingViewParams = WindowManager.LayoutParams(
             LayoutParams.WRAP_CONTENT,
             LayoutParams.WRAP_CONTENT,
@@ -49,8 +64,17 @@ class FloatingPetService : Service() {
         floatingViewParams.x = 0
         floatingViewParams.y = 100
 
-        // Add the view to the window
-        windowManager.addView(floatingView, floatingViewParams)
+        // Set up the WindowManager LayoutParams for dismiss target
+        dismissTargetParams = WindowManager.LayoutParams(
+            LayoutParams.WRAP_CONTENT,
+            LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            PixelFormat.TRANSLUCENT
+        )
+
+        dismissTargetParams.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+        dismissTargetParams.y = 150 // Distance from bottom
 
         // Set up touch listener
         setupTouchListener()
@@ -67,17 +91,141 @@ class FloatingPetService : Service() {
                     initialY = floatingViewParams.y
                     initialTouchX = event.rawX
                     initialTouchY = event.rawY
+                    startDragY = event.rawY
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    floatingViewParams.x = initialX + (event.rawX - initialTouchX).toInt()
-                    floatingViewParams.y = initialY + (event.rawY - initialTouchY).toInt()
+                    val deltaX = event.rawX - initialTouchX
+                    val deltaY = event.rawY - initialTouchY
+                    
+                    // Show dismiss target when dragging starts
+                    if (!dismissTargetShowing && hypot(deltaX, deltaY) > 10) {
+                        showDismissTarget()
+                        isDragging = true
+                    }
+
+                    floatingViewParams.x = initialX + deltaX.toInt()
+                    floatingViewParams.y = initialY + deltaY.toInt()
                     windowManager.updateViewLayout(floatingView, floatingViewParams)
+
+                    if (isDragging) {
+                        // Check if over dismiss target
+                        val dismissBounds = getRectForView(dismissTarget)
+                        val floatingBounds = getRectForView(floatingView)
+                        
+                        if (floatingBounds.intersect(dismissBounds)) {
+                            animateAndRemove()
+                            return@setOnTouchListener true
+                        }
+
+                        // Fade dismiss target based on vertical drag
+                        val dragProgress = (event.rawY - startDragY) / 300f // 300dp travel distance
+                        val alpha = (dragProgress).coerceIn(0f, 1f)
+                        dismissTarget.alpha = alpha
+                    }
+                    true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    if (isDragging) {
+                        isDragging = false
+                        hideDismissTarget()
+                    }
                     true
                 }
                 else -> false
             }
         }
+    }
+
+    private fun animateAndRemove() {
+        // Get the location of the dismiss target
+        val targetLocation = IntArray(2)
+        dismissTarget.getLocationOnScreen(targetLocation)
+        val targetCenterX = targetLocation[0] + dismissTarget.width / 2
+        val targetCenterY = targetLocation[1] + dismissTarget.height / 2
+
+        // Get the current location of the floating view
+        val currentLocation = IntArray(2)
+        floatingView.getLocationOnScreen(currentLocation)
+        val startX = currentLocation[0]
+        val startY = currentLocation[1]
+
+        // Create scale animation
+        val scaleAnimator = ValueAnimator.ofFloat(1f, 0f)
+        scaleAnimator.duration = 300
+        scaleAnimator.interpolator = AccelerateInterpolator()
+
+        scaleAnimator.addUpdateListener { animator ->
+            val scale = animator.animatedValue as Float
+            floatingView.scaleX = scale
+            floatingView.scaleY = scale
+
+            // Move towards target center
+            floatingViewParams.x = (startX + (targetCenterX - startX) * (1 - scale)).toInt()
+            floatingViewParams.y = (startY + (targetCenterY - startY) * (1 - scale)).toInt()
+            try {
+                windowManager.updateViewLayout(floatingView, floatingViewParams)
+            } catch (e: IllegalArgumentException) {
+                // View might have been removed
+            }
+        }
+
+        scaleAnimator.addListener(object : AnimatorListenerAdapter() {
+            override fun onAnimationEnd(animation: Animator) {
+                removeFloatingView()
+                stopSelf()
+            }
+        })
+
+        scaleAnimator.start()
+    }
+
+    private fun getRectForView(view: View): android.graphics.Rect {
+        val location = IntArray(2)
+        view.getLocationOnScreen(location)
+        return android.graphics.Rect(
+            location[0],
+            location[1],
+            location[0] + view.width,
+            location[1] + view.height
+        )
+    }
+
+    private fun showDismissTarget() {
+        if (!dismissTargetShowing) {
+            windowManager.addView(dismissTarget, dismissTargetParams)
+            dismissTargetShowing = true
+        }
+    }
+
+    private fun hideDismissTarget() {
+        if (dismissTargetShowing) {
+            windowManager.removeView(dismissTarget)
+            dismissTargetShowing = false
+        }
+    }
+
+    private fun showFloatingView() {
+        if (!isViewAdded) {
+            windowManager.addView(floatingView, floatingViewParams)
+            isViewAdded = true
+        }
+    }
+
+    private fun removeFloatingView() {
+        if (isViewAdded) {
+            windowManager.removeView(floatingView)
+            isViewAdded = false
+        }
+        hideDismissTarget()
+    }
+
+    private fun stopTimer() {
+        timerRunnable?.let { timerHandler.removeCallbacks(it) }
+        remainingTimeMillis = 0
+        timerClockView.setProgress(0f)
+        timerTextView.visibility = View.GONE
+        removeFloatingView()
     }
 
     private fun startTimer(minutes: Int) {
@@ -87,6 +235,7 @@ class FloatingPetService : Service() {
         remainingTimeMillis = minutes * 60 * 1000L
         timerTextView.visibility = View.VISIBLE
         timerClockView.setTotalMinutes(minutes)
+        showFloatingView() // Show the view when timer starts
         startCountdown()
     }
 
@@ -111,6 +260,7 @@ class FloatingPetService : Service() {
                 } else {
                     timerClockView.setProgress(0f)
                     timerTextView.visibility = View.GONE
+                    removeFloatingView()
                 }
             }
         }
@@ -140,8 +290,8 @@ class FloatingPetService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         timerRunnable?.let { timerHandler.removeCallbacks(it) }
-        if (::windowManager.isInitialized && ::floatingView.isInitialized) {
-            windowManager.removeView(floatingView)
+        if (::windowManager.isInitialized) {
+            removeFloatingView()
         }
     }
 }
