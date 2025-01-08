@@ -9,13 +9,12 @@ import android.os.IBinder
 import android.os.Looper
 import android.view.*
 import android.view.WindowManager.LayoutParams
-import android.widget.ImageView
 import android.widget.TextView
 
 class FloatingPetService : Service() {
     private lateinit var windowManager: WindowManager
     private lateinit var floatingView: View
-    private var timerView: View? = null
+    private lateinit var timerClockView: TimerClockView
     private var timerHandler = Handler(Looper.getMainLooper())
     private var timerRunnable: Runnable? = null
     private var remainingTimeMillis: Long = 0
@@ -33,6 +32,7 @@ class FloatingPetService : Service() {
         
         // Initialize floating view
         floatingView = LayoutInflater.from(this).inflate(R.layout.layout_floating_pet, null)
+        timerClockView = floatingView.findViewById(R.id.pet_image)
 
         // Set up the WindowManager LayoutParams
         floatingViewParams = WindowManager.LayoutParams(
@@ -57,6 +57,8 @@ class FloatingPetService : Service() {
     private fun setupTouchListener() {
         var initialTouchX = 0f
         var initialTouchY = 0f
+        var lastClickTime = 0L
+        val doubleClickTimeout = 300L // milliseconds
 
         floatingView.setOnTouchListener { _, event ->
             when (event.action) {
@@ -65,6 +67,14 @@ class FloatingPetService : Service() {
                     initialY = floatingViewParams.y
                     initialTouchX = event.rawX
                     initialTouchY = event.rawY
+
+                    // Handle double tap to start timer
+                    val clickTime = System.currentTimeMillis()
+                    if (clickTime - lastClickTime < doubleClickTimeout) {
+                        startTimer(5) // Start a 5-minute timer on double tap
+                        return@setOnTouchListener true
+                    }
+                    lastClickTime = clickTime
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
@@ -78,72 +88,39 @@ class FloatingPetService : Service() {
         }
     }
 
-    private fun showTimer(minutes: Int) {
-        // Remove existing timer if any
-        removeTimer()
-
-        // Inflate timer view
-        val inflater = getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
-        timerView = inflater.inflate(R.layout.layout_timer_pill, null)
-
-        // Set up window parameters for timer
-        val timerParams = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-            PixelFormat.TRANSLUCENT
-        )
-
-        // Position timer above the clock
-        timerParams.gravity = Gravity.TOP or Gravity.START
-        timerParams.x = floatingViewParams.x
-        timerParams.y = floatingViewParams.y - 100  // 100 pixels above the clock
-
-        // Add timer view to window
-        windowManager.addView(timerView, timerParams)
-
-        // Start countdown
+    private fun startTimer(minutes: Int) {
+        // Cancel any existing timer
+        timerRunnable?.let { timerHandler.removeCallbacks(it) }
+        
         remainingTimeMillis = minutes * 60 * 1000L
         startCountdown()
     }
 
     private fun startCountdown() {
+        val startTime = remainingTimeMillis
+
         timerRunnable = object : Runnable {
             override fun run() {
                 if (remainingTimeMillis > 0) {
-                    val minutes = remainingTimeMillis / 60000
-                    val seconds = (remainingTimeMillis % 60000) / 1000
-                    val timeText = String.format("%d:%02d", minutes, seconds)
-                    
-                    timerView?.findViewById<TextView>(R.id.timerText)?.text = timeText
-                    
+                    // Update pie timer progress (1.0 to 0.0)
+                    val progress = remainingTimeMillis.toFloat() / startTime.toFloat()
+                    timerClockView.setProgress(progress)
+
                     remainingTimeMillis -= 1000
                     timerHandler.postDelayed(this, 1000)
                 } else {
-                    removeTimer()
+                    timerClockView.setProgress(0f)
                 }
             }
         }
-        timerHandler.post(timerRunnable!!)
-    }
 
-    private fun removeTimer() {
-        timerRunnable?.let { timerHandler.removeCallbacks(it) }
-        timerView?.let {
-            try {
-                windowManager.removeView(it)
-            } catch (e: IllegalArgumentException) {
-                // View might already be removed
-            }
-        }
-        timerView = null
+        timerHandler.post(timerRunnable!!)
     }
 
     fun handleTimerCommand(command: String) {
         if (command.contains("timer") && command.contains("minute")) {
             val minutes = command.split(" ").find { it.matches(Regex("\\d+")) }?.toIntOrNull()
-            minutes?.let { showTimer(it) }
+            minutes?.let { startTimer(it) }
         }
     }
 
@@ -152,7 +129,7 @@ class FloatingPetService : Service() {
             "START_TIMER" -> {
                 val minutes = intent.getIntExtra("TIMER_MINUTES", 0)
                 if (minutes > 0) {
-                    showTimer(minutes)
+                    startTimer(minutes)
                 }
             }
         }
@@ -161,8 +138,8 @@ class FloatingPetService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        removeTimer()
-        if (::floatingView.isInitialized && ::windowManager.isInitialized) {
+        timerRunnable?.let { timerHandler.removeCallbacks(it) }
+        if (::windowManager.isInitialized && ::floatingView.isInitialized) {
             windowManager.removeView(floatingView)
         }
     }
