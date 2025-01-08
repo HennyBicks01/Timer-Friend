@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<actions>
+    <action intentName="actions.intent.CREATE_TIMER">
+        <fulfillment urlTemplate="https://timerfriend.example.com/timer/{duration}">
+            <parameter-mapping>
+                <parameter name="duration" key="duration.raw" />
+            </parameter-mapping>
+        </fulfillment>
+    </action>
+</actions>

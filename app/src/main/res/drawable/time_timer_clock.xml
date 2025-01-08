@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="100dp"
+    android:height="100dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    
+    <!-- White background circle -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M50,50 m-35,0 a35,35 0 1,0 70,0 a35,35 0 1,0 -70,0" />
+    
+    <!-- Tick marks -->
+    <group
+        android:pivotX="50"
+        android:pivotY="50">
+        <path
+            android:strokeColor="#000000"
+            android:strokeWidth="1.5"
+            android:pathData="M50,15 L50,20"
+            android:rotation="0" />
+        <path
+            android:strokeColor="#000000"
+            android:strokeWidth="1.5"
+            android:pathData="M50,15 L50,20"
+            android:rotation="30" />
+        <path
+            android:strokeColor="#000000"
+            android:strokeWidth="1.5"
+            android:pathData="M50,15 L50,20"
+            android:rotation="60" />
+        <path
+            android:strokeColor="#000000"
+            android:strokeWidth="1.5"
+            android:pathData="M50,15 L50,20"
+            android:rotation="90" />
+        <path
+            android:strokeColor="#000000"
+            android:strokeWidth="1.5"
+            android:pathData="M50,15 L50,20"
+            android:rotation="120" />
+        <path
+            android:strokeColor="#000000"
+            android:strokeWidth="1.5"
+            android:pathData="M50,15 L50,20"
+            android:rotation="150" />
+        <path
+            android:strokeColor="#000000"
+            android:strokeWidth="1.5"
+            android:pathData="M50,15 L50,20"
+            android:rotation="180" />
+        <path
+            android:strokeColor="#000000"
+            android:strokeWidth="1.5"
+            android:pathData="M50,15 L50,20"
+            android:rotation="210" />
+        <path
+            android:strokeColor="#000000"
+            android:strokeWidth="1.5"
+            android:pathData="M50,15 L50,20"
+            android:rotation="240" />
+        <path
+            android:strokeColor="#000000"
+            android:strokeWidth="1.5"
+            android:pathData="M50,15 L50,20"
+            android:rotation="270" />
+        <path
+            android:strokeColor="#000000"
+            android:strokeWidth="1.5"
+            android:pathData="M50,15 L50,20"
+            android:rotation="300" />
+        <path
+            android:strokeColor="#000000"
+            android:strokeWidth="1.5"
+            android:pathData="M50,15 L50,20"
+            android:rotation="330" />
+    </group>
+</vector>
