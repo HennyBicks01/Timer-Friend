@@ -1,6 +1,6 @@
 <div align="center">
 
-# TimerFriend
+# Timer Friend
 
 </div>
 
