@@ -91,11 +91,3 @@ TimerFriend demonstrates the potential for reimagining everyday tools through mo
 ## Contributing
 
 This is a proof-of-concept project demonstrating the potential of visual overlay timers. We welcome contributions and suggestions for enhancing the educational and practical applications of TimerFriend.
-
-## License
-
-[MIT License](LICENSE)
-
----
-
-*TimerFriend: Making time visible, keeping screens free.*
