@@ -13,6 +13,7 @@ class TimerClockView @JvmOverloads constructor(
 ) : View(context, attrs, defStyleAttr) {
 
     private var progress = 0f // 0f to 1f
+    private var totalMinutes = 60f // Default to 60 minutes
     
     private val textPaint = Paint().apply {
         color = Color.BLACK
@@ -40,6 +41,11 @@ class TimerClockView @JvmOverloads constructor(
         invalidate()
     }
 
+    fun setTotalMinutes(minutes: Int) {
+        totalMinutes = minutes.toFloat()
+        invalidate()
+    }
+
     override fun onDraw(canvas: Canvas) {
         val centerX = width / 2f
         val centerY = height / 2f
@@ -56,11 +62,15 @@ class TimerClockView @JvmOverloads constructor(
             centerY + radius
         )
         
+        // Calculate the sweep angle based on total minutes
+        val maxSweepAngle = (totalMinutes / 60f) * 360f
+        val currentSweepAngle = maxSweepAngle * progress
+        
         // Draw the progress arc (pie slice)
         canvas.drawArc(
             rect,
             -90f, // Start from top
-            360f * progress,
+            currentSweepAngle,
             true,
             progressPaint
         )

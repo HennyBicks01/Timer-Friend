@@ -15,6 +15,7 @@ class FloatingPetService : Service() {
     private lateinit var windowManager: WindowManager
     private lateinit var floatingView: View
     private lateinit var timerClockView: TimerClockView
+    private lateinit var timerTextView: TextView
     private var timerHandler = Handler(Looper.getMainLooper())
     private var timerRunnable: Runnable? = null
     private var remainingTimeMillis: Long = 0
@@ -33,6 +34,7 @@ class FloatingPetService : Service() {
         // Initialize floating view
         floatingView = LayoutInflater.from(this).inflate(R.layout.layout_floating_pet, null)
         timerClockView = floatingView.findViewById(R.id.pet_image)
+        timerTextView = floatingView.findViewById(R.id.timer_text)
 
         // Set up the WindowManager LayoutParams
         floatingViewParams = WindowManager.LayoutParams(
@@ -57,8 +59,6 @@ class FloatingPetService : Service() {
     private fun setupTouchListener() {
         var initialTouchX = 0f
         var initialTouchY = 0f
-        var lastClickTime = 0L
-        val doubleClickTimeout = 300L // milliseconds
 
         floatingView.setOnTouchListener { _, event ->
             when (event.action) {
@@ -67,14 +67,6 @@ class FloatingPetService : Service() {
                     initialY = floatingViewParams.y
                     initialTouchX = event.rawX
                     initialTouchY = event.rawY
-
-                    // Handle double tap to start timer
-                    val clickTime = System.currentTimeMillis()
-                    if (clickTime - lastClickTime < doubleClickTimeout) {
-                        startTimer(5) // Start a 5-minute timer on double tap
-                        return@setOnTouchListener true
-                    }
-                    lastClickTime = clickTime
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
@@ -93,6 +85,8 @@ class FloatingPetService : Service() {
         timerRunnable?.let { timerHandler.removeCallbacks(it) }
         
         remainingTimeMillis = minutes * 60 * 1000L
+        timerTextView.visibility = View.VISIBLE
+        timerClockView.setTotalMinutes(minutes)
         startCountdown()
     }
 
@@ -106,10 +100,17 @@ class FloatingPetService : Service() {
                     val progress = remainingTimeMillis.toFloat() / startTime.toFloat()
                     timerClockView.setProgress(progress)
 
+                    // Update digital display
+                    val minutes = remainingTimeMillis / 1000 / 60
+                    val seconds = (remainingTimeMillis / 1000) % 60
+                    val timeStr = String.format("%d:%02d", minutes, seconds)
+                    timerTextView.text = timeStr
+
                     remainingTimeMillis -= 1000
                     timerHandler.postDelayed(this, 1000)
                 } else {
                     timerClockView.setProgress(0f)
+                    timerTextView.visibility = View.GONE
                 }
             }
         }

@@ -1,14 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.cardview.widget.CardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="wrap_content"
-    android:layout_height="wrap_content">
+    android:layout_height="wrap_content"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="4dp"
+    app:cardBackgroundColor="#CCFFFFFF">
 
-    <com.example.timerfriend.TimerClockView
-        android:id="@+id/pet_image"
-        android:layout_width="100dp"
-        android:layout_height="100dp"
-        android:src="@drawable/time_timer_clock"
-        android:scaleType="center"
-        android:contentDescription="Floating Timer" />
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="8dp">
 
-</FrameLayout>
+        <com.example.timerfriend.TimerClockView
+            android:id="@+id/pet_image"
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:src="@drawable/time_timer_clock"
+            android:scaleType="center"
+            android:contentDescription="Floating Timer" />
+
+        <TextView
+            android:id="@+id/timer_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="#000000"
+            android:textSize="16sp"
+            android:visibility="gone"/>
+
+    </LinearLayout>
+
+</androidx.cardview.widget.CardView>
