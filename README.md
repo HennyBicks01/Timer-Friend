@@ -1,4 +1,16 @@
-# TimerFriend: Revolutionizing Time Management with Visual Overlays
+<div align="center">
+
+# TimerFriend
+
+</div>
+
+<div align="center">
+
+*Revolutionizing Time Management with Overlays*
+
+![TimerFriend App](assets/image.png)
+
+</div>
 
 ## Overview
 TimerFriend is a proof-of-concept Android application that reimagines how we interact with timers in both educational and personal settings. By leveraging Android's overlay system, TimerFriend provides a persistent, visual representation of time that enhances time awareness without monopolizing screen real estate.
